@@ -2,7 +2,13 @@
 ConfigWithYourProjectName
 ==============================
 # DSEI210-S24-Final-Project
-Final Project for DSEI210-S23 Please fill in the Description
+Final Project for DSEI210-S23 
+
+## Home Credit - Credit Risk Model Stability
+
+The project aims to address the challenge of predicting loan default risk for clients with limited credit history. By leveraging machine learning techniques, we seek to develop a robust and stable model that consumer finance providers can use to make more informed lending decisions. 
+
+Link to the Kaggle Competition: https://www.kaggle.com/competitions/home-credit-credit-risk-model-stability 
 
 Project Organization
 ------------
