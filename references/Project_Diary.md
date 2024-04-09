@@ -50,7 +50,7 @@ Following the previously assigned files per team member:
 Next Catch-Up Tuesday 2nd April
 
 
-**Working Session: ** 
+**Working Session:** 
 April 6th. All team members meet during 2.5 hours.  Build a simple LGBM model and run the feature importance metric. 
 
 Findings: 
