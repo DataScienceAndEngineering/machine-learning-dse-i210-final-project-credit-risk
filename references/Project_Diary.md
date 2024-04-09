@@ -51,7 +51,15 @@ Next Catch-Up Tuesday 2nd April
 
 
 **Working Session:** 
-April 6th. All team members meet during 2.5 hours.  Build a simple LGBM model and run the feature importance metric. 
+April 6th. All team members meet for 2.5 hours.  We build a simple LGBM model and run the feature importance metric, excluding the categorical data. 
 
 Findings: 
+- there is a large number of features with >50 unique categories. Doing one hot encoding is not technically possible due to out-of-memory issues.
+- There are duplicates in the features, for instance, the person's age.
+- Feature importance elbow found in the feature 10.
+- We could use sparse algorithms for the categorical.
+- Probably because of the AUC metric, we do not need to focus that much on the unbalanced target, we will confirm this experimentally. 
+
+**Next session:** Meeting where we define the next steps. 
+- 
 
