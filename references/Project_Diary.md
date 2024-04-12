@@ -60,6 +60,10 @@ Findings:
 - We could use sparse algorithms for the categorical.
 - Probably because of the AUC metric, we do not need to focus that much on the unbalanced target, we will confirm this experimentally. 
 
-**Next session:** Meeting where we define the next steps. 
-- 
+**Next Steps session:** All members meeting Friday 12th May. 
+It is decided to do a new aggregation of the data by splitting it by num_group1 = 0 and num_group1 != 0 (applicant vs non-applicant) and re-train the LGBM model to get the new feature importance. Wayne will be doing this part using the previous EDA files. 
+
+Shradha, Artjola, and Laura will investigate how to deal with the categorical features and try to come up with some transformation we could use to keep the information but reduce sparsity and dimensionality. 
+
+By Sunday 14th April, we will decide the next steps with the results of the new model. Do we want to build an applicant-only model? Keep all together? Multiple model different thresholds? 
 
