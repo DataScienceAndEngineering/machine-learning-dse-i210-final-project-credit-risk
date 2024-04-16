@@ -14,7 +14,7 @@ def group_file_data(
     df : Polars DataFrame
     num_cols : List of numerical column names (remember to drop num_group columns)
     date_cols : List of date column names
-    cat_cols : List of categorical column names (becomes dummies)
+    cat_cols : List of categorical column names
     '''
     
     # Convert date columns
@@ -37,9 +37,11 @@ def group_file_data(
     # dummy_cols = [ col for col in df_dummies.columns if col != 'case_id']
     # dummies_aggs = [ pl.sum(col).name.suffix('_sum') for col in dummy_cols ]
     # df_dummies_grouped = df_dummies.group_by('case_id').agg(dummies_aggs)
-    cat_aggs = [ pl.col(col).mode().name.suffix('_mode') for col in cat_cols ] +\
-               [ pl.n_unique(col).name.suffix('_distinct') for col in cat_cols ]
-    df_cat_grouped = df_cat.group_by('case_id').agg(cat_aggs)
+
+    # Cat aggs
+    # cat_aggs = [ pl.col(col).mode().name.suffix('_mode') for col in cat_cols ] +\
+    #            [ pl.n_unique(col).name.suffix('_distinct') for col in cat_cols ]
+    # df_cat_grouped = df_cat.group_by('case_id').agg(cat_aggs)
 
     # Numerical aggs
     num_aggs = [ pl.min(col).name.suffix('_min') for col in num_cols ] +\
@@ -52,6 +54,6 @@ def group_file_data(
     # Join DataFrames
     df_joined = df_num_grouped.join(df_date_grouped, on='case_id')
     # df_joined = df_joined.join(df_dummies_grouped, on='case_id')
-    df_joined = df_joined.join(df_cat_grouped, on='case_id')
+    # df_joined = df_joined.join(df_cat_grouped, on='case_id')
 
     return df_joined

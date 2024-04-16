@@ -26,6 +26,7 @@ if __name__ == '__main__':
         os.makedirs(OUTPUT_DIR)
 
     for file_group in FILE_GROUPS:
+        print(f'Processing "{file_group}" files...')
         files = glob.glob(os.path.join(BASE_DIR, file_group) + '*')
     
         # Get columns
@@ -47,6 +48,9 @@ if __name__ == '__main__':
             if (df.columns[i] not in date_cols) and (df.columns[i] not in cat_cols) and (df.columns[i] not in ignore_cols)
         ]
 
+        # Drop cat cols
+        df = df.drop(cat_cols)
+
         # Create and write DataFrames
         if 'num_group1' in df.columns:
             df_num_group_0 = df.filter(pl.col('num_group1') == 0)
@@ -55,8 +59,8 @@ if __name__ == '__main__':
             df_num_group_0 = group_file_data(df_num_group_0, num_cols, date_cols)
             df_num_group_rest = group_file_data(df_num_group_rest, num_cols, date_cols)
 
-            output_file_0 = df.write_parquet(os.path.join(OUTPUT_DIR, file_group + '_grouped_0.parquet'))
-            output_file_rest = df.write_parquet(os.path.join(OUTPUT_DIR, file_group + '_grouped_rest.parquet'))
+            output_file_0 = df_num_group_0.write_parquet(os.path.join(OUTPUT_DIR, file_group + '_grouped_0.parquet'))
+            output_file_rest = df_num_group_rest.write_parquet(os.path.join(OUTPUT_DIR, file_group + '_grouped_rest.parquet'))
         else:
             df = group_file_data(df, num_cols, date_cols)
             output_file = df.write_parquet(os.path.join(OUTPUT_DIR, file_group + '_grouped.parquet'))
