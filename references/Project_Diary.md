@@ -67,3 +67,20 @@ Shradha, Artjola, and Laura will investigate how to deal with the categorical fe
 
 By Sunday 14th April, we will decide the next steps with the results of the new model. Do we want to build an applicant-only model? Keep all together? Multiple model different thresholds? 
 
+**Working Session:** 
+April 19th. All team members meet for 1.5 hours. 
+
+- Laura built two functions: one to extra the frequency of categorical features and the binary encoding in polars. 
+- Shradha built a polar function to get the month and year as new features from date fields. She created as well the pandas version of the frequency encoding and binary encoding, including the idea of one hot encoding for low dimensional categorical features.
+  
+Decisions:
+
+- Include the categorical variables. First, aggregate with the mode and then apply one hot encoding if the number of distinct categories is =< 5. Apply the frequency encoding and binary encoding developed features for those with a number of distinct categories > 5.
+- Wayne will include the categorical encoding functions and date functions developed in the previous iteration to the utils aggregation function and run the notebook again to get the new pre-processed training data.
+- With this new training data, the following models will be developed, using 20% validation data, cross-validation, and hyperparameter tunning with the AUC as the accuracy score. Further exploration is expected.
+  - Artjola: Benchmark PCA and Logistic Regression
+  - Shradha: Random Forest
+  - Wayne: SVM
+  - Laura: LightGBM
+
+Deadline April 28th. 
