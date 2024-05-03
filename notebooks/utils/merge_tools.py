@@ -25,7 +25,10 @@ def merge_n_case_ids(
     '''
     # Get random sample of case_ids
     base_df = pd.read_csv(path_to_base)
-    case_ids = list(base_df['case_id'].sample(n=n_ids, replace=False, random_state=random_state))
+    if n_ids > 0:
+        case_ids = list(base_df['case_id'].sample(n=n_ids, replace=False, random_state=random_state))
+    else:
+        case_ids = list(base_df['case_id'])
     del base_df
 
     # Get files
