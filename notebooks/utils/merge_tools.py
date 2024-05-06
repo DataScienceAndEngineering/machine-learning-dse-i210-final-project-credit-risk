@@ -38,14 +38,11 @@ def merge_n_case_ids(
         file_paths = glob(data_dir + '*grouped_rest.parquet')
 
     # Merge DataFrames
-    for i, path in enumerate(file_paths):
-        if i == 0:
-            df = pl.read_parquet(path)
-            df = df.filter(pl.col('case_id').is_in(case_ids))
-        else:
-            temp = pl.read_parquet(path)
-            temp = temp.filter(pl.col('case_id').is_in(case_ids))
-            df = df.join(temp, on='case_id', how='outer_coalesce')
+    df = pl.read_csv(path_to_base)
+    for path in file_paths:
+        temp = pl.read_parquet(path)
+        temp = temp.filter(pl.col('case_id').is_in(case_ids))
+        df = df.join(temp, on='case_id', how='outer_coalesce')
     del temp
 
     if as_pandas:
