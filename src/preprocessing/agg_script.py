@@ -68,14 +68,18 @@ if __name__ == '__main__':
             df_num_group_0 = M.group_file_data(df_num_group_0, num_cols, date_cols, cat_cols)
             df_num_group_rest = M.group_file_data(df_num_group_rest, num_cols, date_cols, cat_cols)
 
-            new_date_cols = [ 
+            new_date_cols_0 = [ 
                 col for col in df_num_group_0.columns 
                 if df_num_group_0[col].dtype == pl.Date 
             ]
+            new_date_cols_rest = [ 
+                col for col in df_num_group_rest.columns 
+                if df_num_group_rest[col].dtype == pl.Date 
+            ]
 
             # Transform data
-            date_df_0 = M.separate_dates(df_num_group_0, new_date_cols)
-            date_df_rest = M.separate_dates(df_num_group_rest, new_date_cols)
+            date_df_0 = M.separate_dates(df_num_group_0, new_date_cols_0)
+            date_df_rest = M.separate_dates(df_num_group_rest, new_date_cols_rest)
             freq_df_0 = M.freq_encoder(df_num_group_0, cat_cols)
             freq_df_rest = M.freq_encoder(df_num_group_rest, cat_cols)
             bin_df_0 = M.binary_encoder(df_num_group_0, cat_cols)
@@ -86,11 +90,10 @@ if __name__ == '__main__':
             df_rest = pl.concat([df_num_group_rest, date_df_rest, freq_df_rest, bin_df_rest], how='horizontal')
 
             # Drop unprocessed columns
-            df_0 = df_0.drop(date_cols + cat_cols)
-            df_rest = df_rest.drop(date_cols + cat_cols)
+            df_0 = df_0.drop(date_cols + cat_cols + new_date_cols_0)
+            df_rest = df_rest.drop(date_cols + cat_cols + new_date_cols_rest)
 
-            output_file_0 = df_0.write_parquet(os.path.join(OUTPUT_DIR, file_group + '_grouped_0.parquet'))
-            output_file_rest = df_rest.write_parquet(os.path.join(OUTPUT_DIR, file_group + '_grouped_rest.parquet'))
+            df_0.write_parquet(os.path.join(OUTPUT_DIR, file_group + '_grouped_0.parquet'))
+            df_rest.write_parquet(os.path.join(OUTPUT_DIR, file_group + '_grouped_rest.parquet'))
         else:
-            df = M.group_file_data(df, num_cols, date_cols)
-            output_file = df.write_parquet(os.path.join(OUTPUT_DIR, file_group + '_grouped.parquet'))
+            df.write_parquet(os.path.join(OUTPUT_DIR, file_group + '_grouped.parquet'))
