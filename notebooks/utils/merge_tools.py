@@ -9,6 +9,7 @@ def merge_n_case_ids(
     path_to_base: str = '../data/raw/csv_files/train/train_base.csv',
     use_0: bool = True,
     as_pandas: bool = False,
+    case_id_list: list = [],
     random_state: int = 28
 ) -> pl.DataFrame | pd.DataFrame:
     '''
@@ -21,12 +22,22 @@ def merge_n_case_ids(
     path_to_base : Path to base file (str)
     use_0 : Use num_group1 == 0 (bool)
     as_pandas : Return as pandas DataFrame
+    case_id_list : List of case_ids to retrieve (list)
     random_seed : Random seed (int)
     '''
     # Get random sample of case_ids
     base_df = pd.read_csv(path_to_base)
     if n_ids > 0:
-        case_ids = list(base_df['case_id'].sample(n=n_ids, replace=False, random_state=random_state))
+        if len(case_id_list) == 0:
+            weights = pd.Series(1, index=base_df.index)
+            target_column = 'target'
+            target_weight = 5
+            weights[base_df.index[base_df[target_column] == 1]] = target_weight
+            case_ids = base_df.sample(n=n_ids, replace=False, weights=weights, random_state=random_state)
+            case_ids = list(case_ids['case_id'])
+        else:
+            assert n_ids == len(case_id_list), 'length of case_id_list must equal n_ids'
+            case_ids = case_id_list
     else:
         case_ids = list(base_df['case_id'])
     del base_df
@@ -38,7 +49,7 @@ def merge_n_case_ids(
         file_paths = glob(data_dir + '*grouped_rest.parquet')
 
     # Merge DataFrames
-    df = pl.read_csv(path_to_base)
+    df = pl.read_csv(path_to_base).filter(pl.col('case_id').is_in(case_ids))
     for path in file_paths:
         temp = pl.read_parquet(path)
         temp = temp.filter(pl.col('case_id').is_in(case_ids))
