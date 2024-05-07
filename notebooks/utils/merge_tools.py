@@ -26,7 +26,12 @@ def merge_n_case_ids(
     # Get random sample of case_ids
     base_df = pd.read_csv(path_to_base)
     if n_ids > 0:
-        case_ids = list(base_df['case_id'].sample(n=n_ids, replace=False, random_state=random_state))
+        weights = pd.Series(1, index=base_df.index)
+        target_column = 'target'
+        target_weight = 5
+        weights[base_df.index[base_df[target_column] == 1]] = target_weight
+        case_ids = base_df.sample(n=n_ids, replace=False, weights=weights, random_state=random_state)
+        case_ids = list(case_ids['case_id'])
     else:
         case_ids = list(base_df['case_id'])
     del base_df
@@ -38,7 +43,7 @@ def merge_n_case_ids(
         file_paths = glob(data_dir + '*grouped_rest.parquet')
 
     # Merge DataFrames
-    df = pl.read_csv(path_to_base)
+    df = pl.read_csv(path_to_base).filter(pl.col('case_id').is_in(case_ids))
     for path in file_paths:
         temp = pl.read_parquet(path)
         temp = temp.filter(pl.col('case_id').is_in(case_ids))
