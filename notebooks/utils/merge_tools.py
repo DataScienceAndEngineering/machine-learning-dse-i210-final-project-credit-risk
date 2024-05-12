@@ -114,3 +114,16 @@ def merge_n_case_ids_batch_processing(
         df = df.to_pandas()
 
     return df
+
+def set_table_dtypes(df: pl.DataFrame) -> pl.DataFrame:
+    # implement here all desired dtypes for tables
+    # the following is just an example
+    for col in df.columns:
+        # last letter of column name will help you determine the type
+        if col[-1] in ("P", "A"):
+            df = df.with_columns(pl.col(col).cast(pl.Float64).alias(col))
+
+        if col[-1] == 'D':
+            df = df.with_columns(pl.col(col).str.to_date())
+
+    return df
