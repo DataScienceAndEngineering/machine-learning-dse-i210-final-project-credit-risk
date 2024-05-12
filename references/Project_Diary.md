@@ -84,3 +84,16 @@ Decisions:
   - Laura: LightGBM
 
 Deadline April 28th. 
+
+**Working Session:** 
+April 19th. All team members meet for 2.5 hours. 
+
+Retrospective Meeting Conclusions: The previous decision to split the project into trying an exploring different models was not ideal. Working Session to go through the findings and explorations done and brainstorming on potential next steps and paths. Some group coding through the previous results was done. 
+
+The work will be split into: 
+- Artjola: deep dive EDA y correlation matrices (using the initial feature importance from LGBM)
+- Shradha: Feature Selection with RandomForest
+- Laura: Fake %-based model and Baseline (LogReg, RF, and LightGBM with pre-processed data). Exploration of Regularization with model Stability
+- Wayne: Unbalanced Target potential solution investigation (Fake Data, oversampling, ...) with LightGBM.
+
+
