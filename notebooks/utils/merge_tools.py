@@ -1,8 +1,55 @@
 import polars as pl
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+
 from glob import glob
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.preprocessing import LabelEncoder
+from sklearn.manifold import TSNE
+
+
+def set_table_dtypes(df: pl.DataFrame) -> pl.DataFrame:
+    # implement here all desired dtypes for tables
+    # the following is just an example
+    for col in df.columns:
+        # last letter of column name will help you determine the type
+        if col[-1] in ("P", "A"):
+            df = df.with_columns(pl.col(col).cast(pl.Float64).alias(col))
+
+        if col[-1] == 'D':
+        # if col.__contains__('D'):
+            try:
+                df = df.with_columns(pl.col(col).str.to_date())
+            except:
+                pass
+        
+        if col == 'date_decision':
+            df = df.with_columns(pl.col(col).str.to_date())
+
+
+    return df
+
+def load_data_group(group_name: str, base_file_path: str, data_dir: str) -> pl.DataFrame:
+    '''
+    Function to load all files from a single group.
+    Note: Function removes non-target variable from merged base data.
+    '''
+
+    # Get path for all files in group
+    paths = glob(os.path.join(data_dir, group_name) + '*')
+
+    # Merge files into polars DataFrame
+    df = pl.DataFrame()
+    for path in paths:
+        df = pl.concat([df, pl.read_parquet(path).pipe(set_table_dtypes)], how='vertical')
+
+    base_df = pl.read_parquet(base_file_path).pipe(set_table_dtypes)
+    df = df.join(base_df, on='case_id', how='left')
+
+    return df
 
 class WithinGroupImputer(BaseEstimator, TransformerMixin):
     def __init__(self, how: str, group_var: str=None):
@@ -54,7 +101,6 @@ class WithinGroupImputer(BaseEstimator, TransformerMixin):
 
         return X_
 
-
 def merge_n_case_ids(
     n_ids: int = 0, 
     data_dir: str = '../data/processed/grouped/new_aggs/',
@@ -83,7 +129,7 @@ def merge_n_case_ids(
         if len(case_id_list) == 0:
             weights = pd.Series(1, index=base_df.index)
             target_column = 'target'
-            target_weight = 5
+            target_weight = len(base_df) // len(base_df[base_df[target_column] == 1])
             weights[base_df.index[base_df[target_column] == 1]] = target_weight
             case_ids = base_df.sample(n=n_ids, replace=False, weights=weights, random_state=random_state)
             case_ids = list(case_ids['case_id'])
@@ -101,9 +147,9 @@ def merge_n_case_ids(
         file_paths = glob(data_dir + '*grouped_rest.parquet')
 
     # Merge DataFrames
-    df = pl.read_csv(path_to_base).filter(pl.col('case_id').is_in(case_ids))
+    df = pl.read_csv(path_to_base).filter(pl.col('case_id').is_in(case_ids)).pipe(set_table_dtypes)
     for path in file_paths:
-        temp = pl.read_parquet(path)
+        temp = pl.read_parquet(path).pipe(set_table_dtypes)
         temp = temp.filter(pl.col('case_id').is_in(case_ids))
         df = df.join(temp, on='case_id', how='outer_coalesce')
     del temp
@@ -167,21 +213,7 @@ def merge_n_case_ids_batch_processing(
 
     return df
 
-def set_table_dtypes(df: pl.DataFrame) -> pl.DataFrame:
-    # implement here all desired dtypes for tables
-    # the following is just an example
-    for col in df.columns:
-        # last letter of column name will help you determine the type
-        if col[-1] in ("P", "A"):
-            df = df.with_columns(pl.col(col).cast(pl.Float64).alias(col))
 
-        if col[-1] == 'D':
-            df = df.with_columns(pl.col(col).str.to_date())
-        
-        if col == 'date_decision':
-            df = df.with_columns(pl.col(col).str.to_date())
-
-    return df
 
 def separate_dates(df: pl.DataFrame, date_cols: list[str] = []) -> pl.DataFrame:
 
@@ -215,3 +247,76 @@ def get_top_n_categories(df: pd.DataFrame, n_cat: int = 5) -> dict:
         cols_dict[col] = top_n_list
         
     return cols_dict
+
+def preprocess_and_tsne_with_nan_handling(X, y, title):
+    # Copy the dataset to avoid changing the original
+    X_encoded = X.copy()
+    
+    # Handle NaNs in categorical columns
+    for column in X_encoded.select_dtypes(include=['object', 'category']).columns:
+        X_encoded[column] = X_encoded[column].fillna('NULL')  # Replace NaNs with 'NULL'
+        le = LabelEncoder()
+        X_encoded[column] = le.fit_transform(X_encoded[column].astype(str))
+    
+    # Handle NaNs in numerical columns
+    for column in X_encoded.select_dtypes(exclude=['object', 'category']).columns:
+        X_encoded[column] = X_encoded[column].fillna(-999)  # Replace NaNs with -999
+    
+    # Initialize and apply t-SNE
+    tsne = TSNE(n_components=2, random_state=42)
+    tsne_results = tsne.fit_transform(X_encoded)
+    
+    # Create a DataFrame with t-SNE results and target
+    tsne_df = pd.DataFrame(data=tsne_results, columns=['TSNE1', 'TSNE2'])
+    tsne_df['target'] = y.reset_index(drop=True)
+    
+    # Plot the t-SNE results
+    plt.figure(figsize=(6, 4))
+    sns.scatterplot(
+        x='TSNE1', y='TSNE2',
+        hue='target',
+        palette=sns.color_palette('hsv', len(tsne_df['target'].unique())),
+        data=tsne_df,
+        alpha=0.6
+
+    )
+    plt.title(title)
+    plt.xlabel('TSNE Component 1')
+    plt.ylabel('TSNE Component 2')
+    plt.legend(title='Target')
+    plt.grid(True)
+    plt.show()
+
+    print("t-SNE Visualization for Mean and Mode Imputed Validation Data with NaN Handling")
+
+# Function to preprocess data, handle NaNs, and apply t-SNE
+def tsne_plot(X, y, title):
+    # Copy the dataset to avoid changing the original
+    X_encoded = X.copy()
+        
+    # Initialize and apply t-SNE
+    tsne = TSNE(n_components=2, random_state=42)
+    tsne_results = tsne.fit_transform(X_encoded)
+    
+    # Create a DataFrame with t-SNE results and target
+    tsne_df = pd.DataFrame(data=tsne_results, columns=['TSNE1', 'TSNE2'])
+    tsne_df['target'] = y.reset_index(drop=True)
+    
+    # Plot the t-SNE results
+    plt.figure(figsize=(6, 4))
+    sns.scatterplot(
+        x='TSNE1', y='TSNE2',
+        hue='target',
+        palette=sns.color_palette('hsv', len(tsne_df['target'].unique())),
+        data=tsne_df,
+        alpha=0.6
+
+    )
+    plt.title(title)
+    plt.xlabel('TSNE Component 1')
+    plt.ylabel('TSNE Component 2')
+    plt.legend(title='Target')
+    plt.grid(True)
+    plt.show()
+
+    print("t-SNE Visualization for Mean and Mode Imputed Validation Data with NaN Handling")
