@@ -1,6 +1,25 @@
 import polars as pl
 import pandas as pd
+import numpy as np
 from glob import glob
+from sklearn.base import BaseEstimator, TransformerMixin
+
+# From https://stackoverflow.com/questions/67515224/simpleimputer-with-groupby
+class WithinGroupMeanImputer(BaseEstimator, TransformerMixin):
+    def __init__(self, group_var):
+        self.group_var = group_var
+    
+    def fit(self, X, y=None):
+        return self
+        
+    def transform(self, X):
+        # the copy leaves the original dataframe intact
+        X_ = X.copy()
+        for col in X_.columns:
+            if pd.api.types.is_numeric_dtype(X_[col].dtypes):
+                X_.loc[(X[col].isna()) & X_[self.group_var].notna(), col] = X_[self.group_var].map(X_.groupby(self.group_var)[col].mean())
+                X_[col] = X_[col].fillna(X_[col].mean())
+        return X_
 
 
 def merge_n_case_ids(
@@ -125,5 +144,41 @@ def set_table_dtypes(df: pl.DataFrame) -> pl.DataFrame:
 
         if col[-1] == 'D':
             df = df.with_columns(pl.col(col).str.to_date())
+        
+        if col == 'date_decision':
+            df = df.with_columns(pl.col(col).str.to_date())
 
     return df
+
+def separate_dates(df: pl.DataFrame, date_cols: list[str] = []) -> pl.DataFrame:
+
+    date_df = df.select(date_cols)
+
+    for col in date_cols:
+        date_df = date_df.with_columns(pl.col(col).dt.year().alias(col + '_year'))
+        date_df = date_df.with_columns(pl.col(col).dt.month().alias(col + '_month'))
+        date_df = date_df.with_columns(pl.col(col).dt.day().alias(col + '_day'))
+        date_df.drop_in_place(col)
+
+    return date_df
+
+def create_is_null_cols(df: pl.DataFrame) -> pl.DataFrame:
+    '''Only creates null columns for non-string columns'''
+    for col in df.columns:
+        if (df[col].is_null().sum() > 0) and (df[col].dtype != pl.String):
+            df = df.with_columns(df[col].is_null().alias(f'{col}_is_null'))
+    
+    return df
+
+def get_top_n_categories(df: pd.DataFrame, n_cat: int = 5) -> dict:
+    cols = df.select_dtypes('object').columns
+    cols_dict = {}
+    for col in cols:
+        if len(df[col].unique()) >= n_cat:
+            top_n_list = df[col].value_counts()[:n_cat].index.tolist()
+        else:
+            top_n_list = df[col].unique().tolist()
+        
+        cols_dict[col] = top_n_list
+        
+    return cols_dict
