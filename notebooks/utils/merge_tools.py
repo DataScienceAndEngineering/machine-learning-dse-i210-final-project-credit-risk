@@ -4,21 +4,54 @@ import numpy as np
 from glob import glob
 from sklearn.base import BaseEstimator, TransformerMixin
 
-# From https://stackoverflow.com/questions/67515224/simpleimputer-with-groupby
-class WithinGroupMeanImputer(BaseEstimator, TransformerMixin):
-    def __init__(self, group_var):
-        self.group_var = group_var
+class WithinGroupImputer(BaseEstimator, TransformerMixin):
+    def __init__(self, how: str, group_var: str=None):
+        assert (how == 'mean') or (how == 'median'), 'Must be mean or median.'
+
+        self.how = how
+        self.group_var = group_var if group_var else 'group_var'
     
     def fit(self, X, y=None):
+        self.imp_dict = {}
+
+        if y is not None:
+            self.group_vals = np.unique(y)
+        else:
+            assert self.group_var in X.columns, f"'{self.group_var}' not in columns."
+            self.group_vals = X[self.group_var].unique()
+
+        X_ = pd.concat([X, pd.Series(y, name=self.group_var)], axis=1)
+
+        for col in X.columns:
+            if pd.api.types.is_any_real_numeric_dtype(X_[col]):
+                self.imp_dict[col] = {}
+                if self.how == 'mean':
+                    self.imp_dict[col]['default'] = X_[col].mean()
+                    for val in self.group_vals:
+                        self.imp_dict[col][val] = X_.groupby(self.group_var)[col].mean()[val]
+                else:
+                    self.imp_dict[col]['default'] = X_[col].median()
+                    for val in self.group_vals:
+                        self.imp_dict[col][val] = X_.groupby(self.group_var)[col].median()[val]
+            
         return self
         
-    def transform(self, X):
-        # the copy leaves the original dataframe intact
-        X_ = X.copy()
-        for col in X_.columns:
-            if pd.api.types.is_numeric_dtype(X_[col].dtypes):
-                X_.loc[(X[col].isna()) & X_[self.group_var].notna(), col] = X_[self.group_var].map(X_.groupby(self.group_var)[col].mean())
-                X_[col] = X_[col].fillna(X_[col].mean())
+    def transform(self, X, y=None):
+        if y is not None:
+            X_ = pd.concat([X, pd.Series(y, name=self.group_var)], axis=1)
+        else:
+            X_ = X.copy()
+
+        for col in X.columns:
+            if pd.api.types.is_any_real_numeric_dtype(X_[col]):
+                assert col in list(self.imp_dict.keys()), f"'{col}' is type {X_[col].dtypes}"
+                
+                for val in np.unique(y):
+                    if val in self.group_vals:
+                        X_.loc[X_[self.group_var] == val, col] = X_.loc[X_[self.group_var] == val, col].fillna(self.imp_dict[col][val])
+                    else:
+                        X_[col] = X_[col].fillna(self.imp_dict[col]['default'])
+
         return X_
 
 
