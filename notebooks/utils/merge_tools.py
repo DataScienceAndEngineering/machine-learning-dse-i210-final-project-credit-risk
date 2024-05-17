@@ -105,59 +105,105 @@ def merge_n_case_ids(
     n_ids: int = 0, 
     data_dir: str = '../data/processed/grouped/new_aggs/',
     path_to_base: str = '../data/raw/csv_files/train/train_base.csv',
-    use_0: bool = True,
+    # use_0: bool = True,
+    target_weight: int = 5,
     as_pandas: bool = False,
-    case_id_list: list = [],
+    # case_id_list: list = [],
     random_state: int = 28
 ) -> pl.DataFrame | pd.DataFrame:
     '''
     Function to merge all parquet files, can return subset case_id.
+    Test DataFrame from last 10000 cases, train DataFrame sampled from the
+    remaining cases.
 
     Parameters
     ----------
     n_ids : Number of case_ids to keep (int)
     data_dir : Path to processed parquet files directory (str)
     path_to_base : Path to base file (str)
-    use_0 : Use num_group1 == 0 (bool)
+    use_0 : Use num_group1 == 0 (bool), NO LONGER IN USE
+    target_weight : weighting for minority class sample (int)
     as_pandas : Return as pandas DataFrame
-    case_id_list : List of case_ids to retrieve (list)
+    case_id_list : List of case_ids to retrieve (list), NO LONGER IN USE
     random_seed : Random seed (int)
+
+    Return
+    ------
+    train_df : Training DataFrame, sample from non-test cases
+    test_df : Testing DataFrame, last 10000 cases
     '''
     # Get random sample of case_ids
     base_df = pd.read_csv(path_to_base)
+    test_case_ids = base_df[-10000:]['case_id'].to_list()
+    base_df = base_df[:-10000]
+    
     if n_ids > 0:
-        if len(case_id_list) == 0:
-            weights = pd.Series(1, index=base_df.index)
-            target_column = 'target'
-            target_weight = len(base_df) // len(base_df[base_df[target_column] == 1])
-            weights[base_df.index[base_df[target_column] == 1]] = target_weight
-            case_ids = base_df.sample(n=n_ids, replace=False, weights=weights, random_state=random_state)
-            case_ids = list(case_ids['case_id'])
-        else:
-            assert n_ids == len(case_id_list), 'length of case_id_list must equal n_ids'
-            case_ids = case_id_list
+        # if len(case_id_list) == 0:
+        #     weights = pd.Series(1, index=base_df.index)
+        #     target_column = 'target'
+        #     target_weight = target_weight
+        #     weights[base_df.index[base_df[target_column] == 1]] = target_weight
+        #     case_ids = base_df.sample(n=n_ids, replace=False, weights=weights, random_state=random_state)
+        #     case_ids = list(case_ids['case_id'])
+        # else:
+        #     assert n_ids == len(case_id_list), 'length of case_id_list must equal n_ids'
+        #     case_ids = case_id_list
+        weights = pd.Series(1, index=base_df.index)
+        target_column = 'target'
+        target_weight = target_weight
+        weights[base_df.index[base_df[target_column] == 1]] = target_weight
+        case_ids = base_df.sample(n=n_ids, replace=False, weights=weights, random_state=random_state)
+        case_ids = list(case_ids['case_id'])
     else:
         case_ids = list(base_df['case_id'])
     del base_df
 
     # Get files
-    if use_0:
-        file_paths = glob(data_dir + '*grouped_0.parquet')
-    else:
-        file_paths = glob(data_dir + '*grouped_rest.parquet')
+    # if use_0:
+    #     file_paths = glob(data_dir + '*grouped_0.parquet')
+    # else:
+    #     file_paths = glob(data_dir + '*grouped_rest.parquet')
+
+    # num_group1 == 0 paths
+    file_paths = glob(data_dir + '*grouped_0.parquet')
+
+    # num_group1 != 0 paths
+    file_paths_rest = glob(data_dir + '*grouped_rest.parquet')
 
     # Merge DataFrames
-    df = pl.read_csv(path_to_base).filter(pl.col('case_id').is_in(case_ids)).pipe(set_table_dtypes)
+    train_0_df = pl.read_csv(path_to_base).filter(pl.col('case_id').is_in(case_ids)).pipe(set_table_dtypes)
+    test_0_df = pl.read_csv(path_to_base).filter(pl.col('case_id').is_in(test_case_ids)).pipe(set_table_dtypes)
     for path in file_paths:
-        temp = pl.read_parquet(path).pipe(set_table_dtypes)
-        temp = temp.filter(pl.col('case_id').is_in(case_ids))
-        df = df.join(temp, on='case_id', how='outer_coalesce')
-    del temp
+        temp_df = pl.read_parquet(path).pipe(set_table_dtypes)
+        train_cases = temp_df.filter(pl.col('case_id').is_in(case_ids))
+        test_cases = temp_df.filter(pl.col('case_id').is_in(test_case_ids))
+        train_0_df = train_0_df.join(train_cases, on='case_id', how='outer_coalesce')
+        test_0_df = test_0_df.join(test_cases, on='case_id', how='outer_coalesce')
+
+    del temp_df, train_cases, test_cases
+
+    train_rest_df = pl.read_csv(path_to_base).filter(pl.col('case_id').is_in(case_ids)).pipe(set_table_dtypes)
+    test_rest_df = pl.read_csv(path_to_base).filter(pl.col('case_id').is_in(test_case_ids)).pipe(set_table_dtypes)
+    for path in file_paths_rest:
+        temp_df = pl.read_parquet(path).pipe(set_table_dtypes)
+        train_cases = temp_df.filter(pl.col('case_id').is_in(case_ids))
+        test_cases = temp_df.filter(pl.col('case_id').is_in(test_case_ids))
+        train_rest_df = train_rest_df.join(train_cases, on='case_id', how='outer_coalesce')
+        test_rest_df = test_rest_df.join(test_cases, on='case_id', how='outer_coalesce')
+
+    del temp_df, train_cases, test_cases
+
+    train_df = train_0_df.join(train_rest_df, on='case_id', how='left')
+    test_df = test_0_df.join(test_rest_df, on='case_id', how='left')
+    del train_0_df, test_0_df, train_rest_df, test_rest_df
 
     if as_pandas:
-        df = df.to_pandas()
+        train_df = train_df.to_pandas()
+        test_df = test_df.to_pandas()
 
-    return df
+    return train_df, test_df
+
+
 
 
 def merge_n_case_ids_batch_processing(
