@@ -107,6 +107,7 @@ def merge_n_case_ids(
     path_to_base: str = '../data/raw/csv_files/train/train_base.csv',
     # use_0: bool = True,
     target_weight: int = 5,
+    how_far_back: int = 1,  # 1 means do not create a sample space beyond the size of training set
     # as_pandas: bool = False,
     # case_id_list: list = [],
     test_size: float = 0.2,
@@ -141,7 +142,7 @@ def merge_n_case_ids(
     test_n = int(n_ids*test_size)
     train_n = n_ids - test_n
     test_case_ids = base_df[-test_n:]['case_id'].to_list()
-    base_df = base_df[:-test_n*2]
+    base_df = base_df[:-test_n*how_far_back]
     # case_ids = base_df['case_id'][-train_n:].to_list()
     
     if n_ids > 0:
