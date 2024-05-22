@@ -107,10 +107,11 @@ def merge_n_case_ids(
     path_to_base: str = '../data/raw/csv_files/train/train_base.csv',
     # use_0: bool = True,
     target_weight: int = 5,
-    as_pandas: bool = False,
+    # as_pandas: bool = False,
     # case_id_list: list = [],
+    test_size: float = 0.2,
     random_state: int = 28
-) -> pl.DataFrame | pd.DataFrame:
+) -> pd.DataFrame:
     '''
     Function to merge all parquet files, can return subset case_id.
     Test DataFrame from last 10000 cases, train DataFrame sampled from the
@@ -134,8 +135,9 @@ def merge_n_case_ids(
     '''
     # Get random sample of case_ids
     base_df = pd.read_csv(path_to_base)
-    test_case_ids = base_df[-10000:]['case_id'].to_list()
-    base_df = base_df[:-10000]
+    test_case_ids = base_df[-int(n_ids*test_size):]['case_id'].to_list()
+    base_df = base_df[:-int(n_ids*test_size)]
+    train_size = int((1 - test_size) * n_ids)
     
     if n_ids > 0:
         # if len(case_id_list) == 0:
@@ -150,9 +152,8 @@ def merge_n_case_ids(
         #     case_ids = case_id_list
         weights = pd.Series(1, index=base_df.index)
         target_column = 'target'
-        target_weight = target_weight
         weights[base_df.index[base_df[target_column] == 1]] = target_weight
-        case_ids = base_df.sample(n=n_ids, replace=False, weights=weights, random_state=random_state)
+        case_ids = base_df.sample(n=train_size, replace=False, weights=weights, random_state=random_state)
         case_ids = list(case_ids['case_id'])
     else:
         case_ids = list(base_df['case_id'])
@@ -197,9 +198,9 @@ def merge_n_case_ids(
     test_df = test_0_df.join(test_rest_df, on='case_id', how='left')
     del train_0_df, test_0_df, train_rest_df, test_rest_df
 
-    if as_pandas:
-        train_df = train_df.to_pandas()
-        test_df = test_df.to_pandas()
+
+    train_df = train_df.to_pandas()
+    test_df = test_df.to_pandas()
 
     return train_df, test_df
 

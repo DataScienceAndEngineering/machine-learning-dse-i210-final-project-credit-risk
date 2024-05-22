@@ -20,8 +20,8 @@ def two_bars_share_x(
     # Create proportion default by date
     ax1.bar(x=df1[x_name], 
             height=df1[y1_name], 
-            width=1, color='firebrick')
-    ax1.set_ylabel(y1_label, color='firebrick')
+            width=1, color='blue')
+    ax1.set_ylabel(y1_label, color='blue')
     ax1.set_xlabel(x_label)
 
     # Dupe ax
@@ -30,12 +30,12 @@ def two_bars_share_x(
     # Create total by date
     ax2.bar(x=df2[x_name], 
             height=df2[y2_name],
-            width=1, color='darkblue', alpha=0.5)
-    ax2.set_ylabel(y2_label, color='darkblue')
+            width=1, color='lime', alpha=0.5)
+    ax2.set_ylabel(y2_label, color='lime')
 
     # Create legend
-    custom_lines = [plt.Line2D([0], [0], color='firebrick', lw=4),
-                    plt.Line2D([0], [0], color='darkblue', lw=4, alpha=0.7)]
+    custom_lines = [plt.Line2D([0], [0], color='blue', lw=4),
+                    plt.Line2D([0], [0], color='lime', lw=4, alpha=0.7)]
 
     fig.legend(custom_lines, [l1_label, l2_label], loc='upper left', bbox_to_anchor=(0.1, 0.9))
     plt.title(title)
